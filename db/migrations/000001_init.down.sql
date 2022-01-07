@@ -1,1 +1,32 @@
--- nothing
+drop table family_medics_hospitals cascade;
+drop table hospitalizations cascade;
+drop table hospital_medics cascade;
+drop table hospitals cascade;
+drop table hospital_managers cascade;
+drop table problems cascade;
+drop table anamnesis cascade;
+drop table reactions cascade;
+drop table measurements cascade;
+drop table changes cascade;
+drop table patients cascade;
+drop table people cascade;
+drop table family_medics cascade;
+drop table account_codes cascade;
+drop table accounts_base cascade;
+
+drop function check_circular_person_family_medic;
+drop function check_circular_family_medic_person;
+drop function refresh_accounts;
+
+drop type account_code_kind;
+drop type account_kind;
+drop type county;
+drop type problem_kind;
+drop type reaction_kind;
+drop type anamnesis_kind;
+drop type measurement_kind;
+drop type blood_rh;
+drop type blood_group;
+drop type country;
+drop type education_level;
+drop type occupation;
