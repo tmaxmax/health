@@ -7,6 +7,7 @@ db_volume=$(DB_CONTAINER_NAME)-data
 
 db-start:
 	docker run \
+		--detach \
 		--rm \
 		--name $(DB_CONTAINER_NAME) \
 		--env POSTGRES_DB=${VITE_PG_DB} \
