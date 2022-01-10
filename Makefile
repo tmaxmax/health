@@ -1,6 +1,6 @@
 include .env
 
-DB_CONNECTION_STRING=postgres://${VITE_PG_USER}:${VITE_PG_PASSWORD}@${VITE_PG_HOSTNAME}:${VITE_PG_PORT}/${VITE_PG_DB}?sslmode=disable
+DB_CONNECTION_STRING=postgres://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/${PGDATABASE}?sslmode=disable
 DB_CONTAINER_NAME=health-database
 DB_IMAGE_TAG=14-alpine
 db_volume=$(DB_CONTAINER_NAME)-data
@@ -10,10 +10,10 @@ db-start:
 		--detach \
 		--rm \
 		--name $(DB_CONTAINER_NAME) \
-		--env POSTGRES_DB=${VITE_PG_DB} \
-		--env POSTGRES_USER=${VITE_PG_USER} \
-		--env POSTGRES_PASSWORD=${VITE_PG_PASSWORD} \
-		--publish ${VITE_PG_PORT}:5432 \
+		--env POSTGRES_DB=${PGDATABASE} \
+		--env POSTGRES_USER=${PGUSER} \
+		--env POSTGRES_PASSWORD=${PGPASSWORD} \
+		--publish ${PGPORT}:5432 \
 		--mount type=volume,source=$(db_volume),destination=$(pg_dir)/data \
 		postgres:$(DB_IMAGE_TAG)
 	@echo Database started! Connect to it using '$(DB_CONNECTION_STRING)'
