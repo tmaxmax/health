@@ -7,5 +7,6 @@
 	"svelteSortOrder": "scripts-markup-styles-options",
 	"svelteIndentScriptAndStyle": true,
 	"svelteBracketNewLine": true,
-	"semi": false
+	"semi": false,
+	"arrowParens": "avoid"
 }
