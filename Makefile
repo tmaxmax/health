@@ -48,4 +48,7 @@ migrate-goto:
 migrate-version:
 	migrate -path $(migrations_dir) -database $(DB_CONNECTION_STRING) version
 
+jwk:
+	node generate-jwk.js
+
 .PHONY: db-start db-attach db-stop db-clean migrate-create migrate-up migrate-down migrate-drop migrate-goto migrate-version
