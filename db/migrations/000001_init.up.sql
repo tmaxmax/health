@@ -360,30 +360,14 @@ create type account_kind as enum (
 	'hospital_manager'
 	);
 
-create type account_code_kind as enum (
-	'email_validation',
-	'password_reset'
-	);
-
 create table accounts_base (
 	id                 serial primary key,
-	email              text      not null
+	email              text      not null check (email <> '')
 		constraint c_account_unique_email unique,
 	has_verified_email boolean   not null default false,
-	password           text      not null,
-	created_at         timestamp not null default localtimestamp,
-	deleted_at         timestamp          default null
+	password           text      not null check (password <> ''),
+	created_at         timestamp not null default localtimestamp
 );
-
-create table account_codes (
-	code       text primary key,
-	kind       account_code_kind not null,
-	account_id int               not null references accounts_base on delete cascade on update cascade,
-	expires_at timestamp         not null
-);
-
-create index idx_account_codes_kind on account_codes (kind);
-create index idx_account_codes_account on account_codes (account_id);
 
 create table family_medics (
 	account_id int primary key references accounts_base on delete cascade on update cascade,
@@ -393,13 +377,13 @@ create table family_medics (
 create table people (
 	id                       serial primary key,
 	family_medic_id          int                      default null references family_medics on delete set null on update cascade,
-	cnp                      varchar(13)     not null
+	cnp                      varchar(13)     not null check (cnp <> '')
 		constraint c_person_unique_cnp unique,
 	name                     text            not null,
 	birthday                 date            not null,
 	citizenship              country,
 	home                     text            not null,
-	residence                text            not null,
+	residence                text,
 	occupation               occupation      not null default 'none',
 	workplace                text
 		constraint c_person_required_workplace check (occupation = 'none' or occupation = 'retired' or workplace is not null),
@@ -414,9 +398,7 @@ create table people (
 	constraint c_person_minor_bc_required check (date_part('year', age(birthday)) >= 18 or
 																							 (birth_certificate_series is not null and
 																								birth_certificate_number is not null)),
-	created_at               timestamp       not null default localtimestamp,
-	updated_at               timestamp                default null,
-	deleted_at               timestamp                default null
+	created_at               timestamp       not null default localtimestamp
 );
 
 alter table family_medics
@@ -445,6 +427,7 @@ $$ language plpgsql;
 create trigger check_circular_family_medic_person_insert
 	before insert
 	on people
+	for each row
 execute function check_circular_family_medic_person();
 
 create trigger check_circular_family_medic_person_update
@@ -457,6 +440,7 @@ execute function check_circular_family_medic_person();
 create trigger check_circular_person_family_medic_insert
 	before insert
 	on family_medics
+	for each row
 execute function check_circular_person_family_medic();
 
 create trigger check_circular_person_family_medic_update
@@ -473,15 +457,15 @@ create table patients (
 
 create table changes (
 	id         serial primary key,
-	created_by int       not null references accounts_base on delete no action on update cascade,
-	deleted_by int                default null references accounts_base on delete no action on update cascade,
+	created_by int references accounts_base on delete set null on update cascade,
+	deleted_by int                default null references accounts_base on delete set null on update cascade,
 	created_at timestamp not null default localtimestamp,
 	deleted_at timestamp          default null
 );
 
 create table measurements (
-	change_id int primary key references changes on delete no action on update cascade,
-	person_id int              not null references people on delete no action on update cascade,
+	change_id int primary key references changes on delete cascade on update cascade,
+	person_id int              not null references people on delete cascade on update cascade,
 	kind      measurement_kind not null,
 	value     numeric          not null
 );
@@ -490,8 +474,8 @@ create index idx_measurements_person on measurements (person_id);
 create index idx_measurements_kind on measurements (kind);
 
 create table reactions (
-	change_id int primary key references changes on delete no action on update cascade,
-	person_id int           not null references people on delete no action on update cascade,
+	change_id int primary key references changes on delete cascade on update cascade,
+	person_id int           not null references people on delete cascade on update cascade,
 	kind      reaction_kind not null,
 	info      text          not null
 );
@@ -500,8 +484,8 @@ create index idx_reactions_person on reactions (person_id);
 create index idx_reactions_kind on reactions (kind);
 
 create table anamnesis (
-	change_id int primary key references changes on delete no action on update cascade,
-	person_id int            not null references people on delete no action on update cascade,
+	change_id int primary key references changes on delete cascade on update cascade,
+	person_id int            not null references people on delete cascade on update cascade,
 	kind      anamnesis_kind not null,
 	info      text           not null
 );
@@ -510,8 +494,8 @@ create index idx_anamnesis_person on anamnesis (person_id);
 create index idx_anamnesis_kind on anamnesis (kind);
 
 create table problems (
-	change_id int primary key references changes on delete no action on update cascade,
-	person_id int          not null references people on delete no action on update cascade,
+	change_id int primary key references changes on delete cascade on update cascade,
+	person_id int          not null references people on delete cascade on update cascade,
 	kind      problem_kind not null,
 	info      text         not null
 );
@@ -525,8 +509,7 @@ create table hospitals (
 	name       text      not null,
 	county     county    not null,
 	address    text      not null,
-	created_at timestamp not null default localtimestamp,
-	deleted_at timestamp          default null
+	created_at timestamp not null default localtimestamp
 );
 
 create table hospital_managers (
@@ -546,8 +529,8 @@ create table hospitalizations (
 	person_id      int       not null references people on delete cascade on update cascade,
 	started_at     timestamp not null default localtimestamp,
 	ended_at       timestamp          default null,
-	started_by     int       not null references hospital_medics on delete no action on update cascade,
-	ended_by       int                default null references hospital_medics on delete no action on update cascade,
+	started_by     int references hospital_medics on delete set null on update cascade,
+	ended_by       int                default null references hospital_medics on delete set null on update cascade,
 	diagnostic_end text               default null
 );
 
@@ -570,12 +553,11 @@ select a.id,
 			 a.has_verified_email,
 			 a.password,
 			 a.created_at,
-			 a.deleted_at,
 			 pp.cnp,
 			 null::int               as hospital
 from accounts_base a
 			 inner join patients pt on a.id = pt.account_id
-			 join people pp on pt.person_id = pp.id
+			 inner join people pp on pt.person_id = pp.id
 union all
 select a.id,
 			 'family_medic'::account_kind as kind,
@@ -583,12 +565,11 @@ select a.id,
 			 a.has_verified_email,
 			 a.password,
 			 a.created_at,
-			 a.deleted_at,
 			 p.cnp,
 			 null::int                    as hospital
 from accounts_base a
 			 inner join family_medics fm on a.id = fm.account_id
-			 join people p on fm.person_id = p.id
+			 inner join people p on fm.person_id = p.id
 union all
 select a.id,
 			 'hospital_medic'::account_kind as kind,
@@ -596,12 +577,11 @@ select a.id,
 			 a.has_verified_email,
 			 a.password,
 			 a.created_at,
-			 a.deleted_at,
 			 p.cnp,
 			 hm.hospital_id                 as hospital
 from accounts_base a
 			 inner join hospital_medics hm on a.id = hm.account_id
-			 join people p on hm.person_id = p.id
+			 inner join people p on hm.person_id = p.id
 union all
 select a.id,
 			 'hospital_manager'::account_kind as kind,
@@ -609,12 +589,11 @@ select a.id,
 			 a.has_verified_email,
 			 a.password,
 			 a.created_at,
-			 a.deleted_at,
 			 null                             as cnp,
 			 h2.id                            as hospital
 from accounts_base a
 			 inner join hospital_managers h on a.id = h.account_id
-			 join hospitals h2 on h2.id = h.hospital_id
+			 inner join hospitals h2 on h2.id = h.hospital_id
 	);
 
 create unique index idx_accounts_unique_id on accounts (id);

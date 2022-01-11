@@ -11,14 +11,12 @@ drop table changes cascade;
 drop table patients cascade;
 drop table people cascade;
 drop table family_medics cascade;
-drop table account_codes cascade;
 drop table accounts_base cascade;
 
 drop function check_circular_person_family_medic;
 drop function check_circular_family_medic_person;
 drop function refresh_accounts;
 
-drop type account_code_kind;
 drop type account_kind;
 drop type county;
 drop type problem_kind;
