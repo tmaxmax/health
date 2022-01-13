@@ -1,51 +1,55 @@
-import { verify } from '$lib/jwt'
+import { JWTVerifyError, verify } from '$lib/jwt'
 import { DatabaseError } from '$lib/database'
+import { assertFormBody, EndpointError } from '$lib/endpointHelpers'
+import { AUTH_TOKEN_MAX_AGE } from './routes/auth/login'
+import type { RequestLocals } from '$lib/endpointHelpers'
+
+import { parse } from 'cookie'
 import type { Handle } from '@sveltejs/kit'
 
-export const handle: Handle<RequestLocals> = async ({ request, resolve }) => {
-	if (request.url.pathname.startsWith('/api')) {
-		try {
-			const [scheme, token] = request.headers.authorization.split(' ')
-			if (scheme.toLowerCase() !== 'bearer') {
-				throw new Error(`Invalid authorization scheme '${scheme}'`)
-			}
-
-			const { payload } = await verify(token, { audience: 'api', maxTokenAge: '1 day' })
+export const handle: Handle<RequestLocals, FormData> = async ({ request, resolve }) => {
+	try {
+		if (request.url.pathname.startsWith('/api')) {
+			const { auth } = parse(request.headers.cookie || '')
+			const { payload } = await verify(auth, { audience: 'api', maxTokenAge: AUTH_TOKEN_MAX_AGE })
 
 			request.locals = {
 				authorized: true,
 				payload,
-				token,
+				auth,
 			}
-		} catch (err) {
+		}
+
+		if (request.method === 'POST') {
+			assertFormBody(request)
+		}
+
+		return await resolve(request)
+	} catch (error) {
+		console.error(error)
+
+		if (error instanceof EndpointError) {
+			return error.toResponse()
+		}
+
+		if (error instanceof DatabaseError) {
+			return {
+				status: 400,
+				headers: {},
+				body: JSON.stringify({ error: { name: 'dataError', message: 'Invalid input data' } }),
+			}
+		}
+
+		if (error instanceof JWTVerifyError) {
 			return {
 				status: 401,
 				headers: {
 					'WWW-Authenticate': 'Bearer',
 				},
-				body: JSON.stringify({ error: 'unauthorized', message: 'Please login' }),
-			}
-		}
-	}
-
-	try {
-		return await resolve(request)
-	} catch (err) {
-		console.error(err)
-
-		if (err instanceof DatabaseError) {
-			return {
-				status: 400,
-				headers: {},
-				body: JSON.stringify({ error: 'dataError', message: 'Invalid input data' }),
+				body: JSON.stringify({ error: { name: 'unauthorized', message: 'Please login' } }),
 			}
 		}
 
-		const body = { error: 'internalError', message: 'An internal error occured' }
-		if (err instanceof Error) {
-			body.message = err.message
-		}
-
-		return { status: 500, headers: {}, body: JSON.stringify(body) }
+		return { status: 500, headers: {}, body: JSON.stringify({ error }) }
 	}
 }
