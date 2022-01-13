@@ -3,7 +3,7 @@ import type { QueryConfig, ClientBase, QueryResult } from 'pg'
 
 const pool = new Pool({ ssl: import.meta.env.PROD })
 
-export function query<R, I extends unknown[]>(config: QueryConfig<I>): Promise<QueryResult<R>> {
+export function query<R, I extends unknown[] = unknown[]>(config: QueryConfig<I>): Promise<QueryResult<R>> {
 	return pool.query(config)
 }
 
