@@ -49,9 +49,13 @@ export function assertFormBody(req: ServerRequest): void {
 	}
 }
 
+export type ErrorResponse = {
+	error: { name: string; message: string } & Record<string, JSONString>
+}
+
 export function errorResponse(
 	status: number,
-	error: { name: string; message: string } & Record<string, JSONString>,
+	error: ErrorResponse['error'],
 	headers: Record<string, string | string[]> = {},
 ): EndpointOutput {
 	return { status, body: { error }, headers }

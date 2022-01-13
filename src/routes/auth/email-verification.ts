@@ -12,7 +12,7 @@ const EXPIRATION_TIME = '1 hour'
 
 export async function sendVerificationEmail(email: string, origin: string): Promise<SMTPTransport.SentMessageInfo> {
 	const jwt = await createJWT({ email }).setExpirationTime(EXPIRATION_TIME).setAudience(AUDIENCE).sign()
-	const address = `${origin}/email-verification?t=${jwt}`
+	const address = `${origin}/email-verification?token=${jwt}`
 
 	return await mail.sendMail({
 		to: email,
