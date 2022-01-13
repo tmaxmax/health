@@ -4,6 +4,7 @@ import { getFormField, EndpointError } from '$lib/endpointHelpers'
 import type { RequestHandler } from '$lib/endpointHelpers'
 
 import { hash } from 'bcrypt'
+import { createAuthCookie } from './login'
 
 const ACCOUNT_TYPES = ['family_medic', 'hospital_manager'] as const
 
@@ -46,6 +47,9 @@ export const post: RequestHandler = async req => {
 	assertValidPassword(password)
 	const hashed = await hashPassword(password)
 
+	let accountID: number
+	let hospitalID: number | undefined
+
 	await transact(async conn => {
 		const {
 			rows: [{ is_email_taken }],
@@ -57,9 +61,9 @@ export const post: RequestHandler = async req => {
 			throw new EmailAlreadyExistsError(email)
 		}
 
-		const {
+		;({
 			rows: [{ id: accountID }],
-		} = await conn.query<{ id: number }>('insert into accounts_base (email, password) values ($1, $2) returning id', [email, hashed])
+		} = await conn.query<{ id: number }>('insert into accounts_base (email, password) values ($1, $2) returning id', [email, hashed]))
 
 		if (accountType === 'family_medic') {
 			const {
@@ -83,13 +87,13 @@ export const post: RequestHandler = async req => {
 
 			await conn.query('insert into family_medics (account_id, person_id) values ($1, $2)', [accountID, personID])
 		} else {
-			const {
+			;({
 				rows: [{ id: hospitalID }],
 			} = await conn.query<{ id: number }>('insert into hospitals (name, county, address) values ($1, $2, $3) returning id', [
 				req.body.get('name'),
 				req.body.get('county'),
 				req.body.get('address'),
-			])
+			]))
 
 			await conn.query('insert into hospital_managers (account_id, hospital_id) values ($1, $2)', [accountID, hospitalID])
 		}
@@ -97,5 +101,6 @@ export const post: RequestHandler = async req => {
 
 	await sendVerificationEmail(email, req.url.origin)
 
-	return {}
+	// @ts-expect-error accountID is assigned in transact's closure
+	return { headers: { 'set-cookie': await createAuthCookie({ id: accountID, kind: accountType, hospital: hospitalID }) } }
 }

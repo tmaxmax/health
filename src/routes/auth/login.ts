@@ -14,7 +14,6 @@ type CustomClaim = {
 	id: number
 	kind: QueryResult['kind']
 	hospital?: number
-	hasVerifiedEmail: boolean
 }
 
 export const AUTH_COOKIE_NAME = 'auth'
@@ -57,7 +56,7 @@ export const post: RequestHandler = async req => {
 		return errorResp
 	}
 
-	const customClaims: CustomClaim = { id: account.id, kind: account.kind, hasVerifiedEmail: account.has_verified_email }
+	const customClaims: CustomClaim = { id: account.id, kind: account.kind }
 	if (account.hospital) {
 		customClaims.hospital = account.hospital
 	}
