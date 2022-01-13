@@ -1,7 +1,8 @@
 import { createTransport } from 'nodemailer'
 
 const transporter = createTransport({
-	// @ts-ignore fuck you
+	// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+	// @ts-ignore This works according to docs, wrong types?
 	host: process.env.SMTP_HOST,
 	port: process.env.SMTP_PORT,
 	secure: import.meta.env.PROD,
