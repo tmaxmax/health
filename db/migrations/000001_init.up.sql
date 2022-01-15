@@ -609,36 +609,29 @@ $$ language plpgsql;
 create trigger refresh_accounts
 	after update
 	on accounts_base
-	for each row
 execute function refresh_accounts();
 
 create trigger refresh_accounts_patients
 	after insert or update
 	on patients
-	for each row
 execute function refresh_accounts();
 
 create trigger refresh_accounts_family_medics
 	after insert or update
 	on family_medics
-	for each row
 execute function refresh_accounts();
 
 create trigger refresh_accounts_hospital_medics
 	after insert or update
 	on hospital_medics
-	for each row
 execute function refresh_accounts();
 
 create trigger refresh_accounts_hospital_managers
 	after insert or update
 	on hospital_managers
-	for each row
 execute function refresh_accounts();
 
 create trigger refresh_accounts_cnp
 	after update
 	on people
-	for each row
-	when (old.cnp is distinct from new.cnp)
 execute function refresh_accounts();
