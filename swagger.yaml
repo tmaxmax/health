@@ -1,0 +1,341 @@
+openapi: 3.0.0
+info:
+  version: 0.0.1
+  title: Health
+  description: |
+    The REST API for the Health service.
+servers:
+  # Added by API Auto Mocking Plugin
+  - description: SwaggerHub API Auto Mocking
+    url: https://virtserver.swaggerhub.com/tmaxmax/health/0.0.1
+tags:
+  - name: auth
+    description: |
+      Account creation, password reset
+      and email verification
+  - name: api
+    description: |
+      Access to actual data, only when authorized
+paths:
+  /auth/login:
+    post:
+      tags:
+        - auth
+      parameters:
+        - $ref: '#/components/parameters/source'
+      responses:
+        200:
+          description: Successfully authenticated
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/SetAuthCookie'
+        400:
+          $ref: '#/components/responses/InvalidRequest'
+        500:
+          $ref: '#/components/responses/InternalError'
+  /auth/logout:
+    post:
+      tags:
+        - auth
+      parameters:
+        - $ref: '#/components/parameters/source'
+      responses:
+        200:
+          description: Successfully unauthenticated
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/SetAuthCookie'
+  /auth/password-reset-request:
+    post:
+      tags:
+        - auth
+      parameters:
+        - $ref: '#/components/parameters/source'
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                emailOrCNP:
+                  type: string
+      responses:
+        200:
+          description: |
+            Password reset request received successfully. An email with a link
+            used to proceed to actually reset the password has been sent.
+        400:
+          $ref: '#/components/responses/InvalidRequest'
+        500:
+          $ref: '#/components/responses/InternalError'
+  /auth/password-reset-submit:
+    post:
+      tags:
+        - auth
+      parameters:
+        - $ref: '#/components/parameters/source'
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+      responses:
+        200:
+          description: The password was successfully reset
+        400:
+          $ref: '#/components/responses/InvalidRequest'
+        500:
+          $ref: '#/components/responses/InternalError'
+  /auth/email-verification-request:
+    post:
+      tags:
+        - auth
+      parameters:
+        - $ref: '#/components/parameters/source'
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+      responses:
+        200:
+          description: |
+            An email was successfully sent to the address subject to
+            verification.
+        400:
+          $ref: '#/components/responses/InvalidRequest'
+        500:
+          $ref: '#/components/responses/InternalError'
+  /auth/email-verification-submit:
+    post:
+      tags:
+        - auth
+      parameters:
+        - $ref: '#/components/parameters/source'
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+      responses:
+        200:
+          description: |
+            The email in the given JWT has been successfully verified
+        400:
+          $ref: '#/components/responses/InvalidRequest'
+        500:
+          $ref: '#/components/responses/InternalError'
+  /register:
+    post:
+      tags:
+        - auth
+      parameters:
+        - $ref: '#/components/parameters/source'
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RegistrationData'
+      responses:
+        200:
+          description: |
+            The account has successfully been created. An email was sent to
+            the given address for verification.
+        400:
+          $ref: '#/components/responses/InvalidRequest'
+        500:
+          $ref: '#/components/responses/InternalError'
+components:
+  headers:
+    SetAuthCookie:
+      schema:
+        type: string
+      examples:
+        login:
+          value: auth=xxx.yyy.zzz; Path=/; HttpOnly; Secure; SameSite=strict; MaxAge=86400
+        logout:
+          value: auth=; Path=/; HttpOnly; Secure; SameSite=strict; MaxAge=0
+  securitySchemes:
+    auth:
+      type: apiKey
+      in: cookie
+      name: auth
+  parameters:
+    source:
+      name: source
+      in: query
+      description: The initiator of the request
+      required: false
+      schema:
+        type: string
+        enum:
+          - form
+          - js
+        default: js
+  responses:
+    InvalidRequest:
+      description: The client has sent an invalid request
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                description: A representation of the error, can be anything
+                oneOf:
+                  - $ref: '#/components/schemas/InvalidBodyError'
+                  - $ref: '#/components/schemas/MissingFieldError'
+                  - $ref: '#/components/schemas/EndpointError'
+                discriminator:
+                  propertyName: name
+    InternalError:
+      description: Something went wrong server-side
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                $ref: '#/components/schemas/Error'
+  schemas:
+    AccountRegistrationData:
+      type: object
+      properties:
+        email:
+          type: string
+          example: acoolemail@provider.com
+        password:
+          type: string
+          example: a cool password
+          minLength: 8
+          maxLength: 72
+        kind:
+          type: string
+          enum: [family_medic, hospital_manager]
+    RegistrationData:
+      allOf:
+        - $ref: '#/components/schemas/AccountRegistrationData'
+        - oneOf:
+            - $ref: '#/components/schemas/HospitalRegistrationData'
+            - $ref: '#/components/schemas/FamilyMedicRegistrationData'
+          discriminator:
+            propertyName: kind
+    HospitalRegistrationData:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Spitalul "Louis Turcanu"
+        county:
+          type: string
+          example: Alba
+        address:
+          type: string
+          example: Strada Ion Barbu
+    FamilyMedicRegistrationData:
+      type: object
+      properties:
+        cnp:
+          type: string
+          example: 5030405123456
+        name:
+          type: string
+          example: Popescu Ion
+        birthday:
+          type: string
+          example: 2003-04-05
+        citizenship:
+          type: string
+          example: RO
+        home:
+          type: string
+          example: Strada Ion Barbu
+        residence:
+          type: string
+          example: Strada Ion Barbu
+        occupation:
+          type: string
+          enum:
+            - none
+            - employee
+            - freelancer
+            - owner
+            - agriculturist
+            - student
+            - unemployed
+            - retired
+          default: none
+        workplace:
+          type: string
+        educationLevel:
+          type: string
+          enum:
+            - none
+            - primary_school
+            - secondary_school
+            - high_school
+            - vocational_school
+            - post_secondary_school
+            - short_term_higher_education
+            - higher_education
+            - unspecified
+          default: unspecified
+        ciSeries:
+          type: string
+          example: TZ
+        ciNumber:
+          type: string
+          example: 123456
+    InvalidBodyError:
+      allOf:
+        - $ref: '#/components/schemas/EndpointError'
+        - type: object
+          properties:
+            name:
+              enum: [invalidBody]
+    MissingFieldError:
+      allOf:
+        - $ref: '#/components/schemas/EndpointError'
+        - type: object
+          properties:
+            name:
+              enum: [missingField]
+            field:
+              type: string
+    EndpointError:
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - type: object
+          properties:
+            statusCode:
+              type: integer
+              example: 400
+          required: [statusCode]
+    Error:
+      type: object
+      properties:
+        name:
+          type: string
+        # example:
+        #   - invalidInput
+        #   - invalidBody
+        #   - invalidEmailResetPaylaod
+        #   - invalidPasswordResetPayload
+        #   - invalidPasswordResetRequest
+        #   - missingField
+        #   - unauthorized
+        message:
+          type: string
+        stack:
+          type: string
+          nullable: true
+      required: [name, message]
