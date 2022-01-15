@@ -1,5 +1,5 @@
 import { transact } from '$lib/database'
-import { sendVerificationEmail } from './email-verification'
+import { sendVerificationEmail } from './email-verification-[action]'
 import { getFormField, EndpointError } from '$lib/endpointHelpers'
 import type { RequestHandler } from '$lib/endpointHelpers'
 

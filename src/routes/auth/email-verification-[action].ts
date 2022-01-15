@@ -1,8 +1,8 @@
 import { createJWT } from '$lib/jwt'
 import { query } from '$lib/database'
 import { getCustomPayload, verify } from '$lib/jwt'
-import { errorResponse } from '$lib/endpointHelpers'
-import mail from '$lib/mail'
+import { errorResponse, getFormField } from '$lib/endpointHelpers'
+import { sendMail } from '$lib/mail'
 import type { RequestHandler } from '$lib/endpointHelpers'
 
 import type SMTPTransport from 'nodemailer/lib/smtp-transport'
@@ -14,7 +14,7 @@ export async function sendVerificationEmail(email: string, origin: string): Prom
 	const jwt = await createJWT({ email }).setExpirationTime(EXPIRATION_TIME).setAudience(AUDIENCE).sign()
 	const address = `${origin}/email-verification?token=${jwt}`
 
-	return await mail.sendMail({
+	return await sendMail({
 		to: email,
 		subject: 'Verify your email address',
 		text: address,
@@ -22,15 +22,12 @@ export async function sendVerificationEmail(email: string, origin: string): Prom
 }
 
 export const post: RequestHandler = async req => {
-	const email = req.body.get('email')
-	if (email) {
-		await sendVerificationEmail(email, req.url.origin)
+	const { action } = req.params
 
-		return {}
-	}
-
-	const token = req.body.get('token')
-	if (token) {
+	if (action === 'request') {
+		await sendVerificationEmail(getFormField(req.body, 'email'), req.url.origin)
+	} else if (action === 'submit') {
+		const token = getFormField(req.body, 'token')
 		const { payload } = await verify(token, { audience: AUDIENCE, maxTokenAge: EXPIRATION_TIME })
 		const { email } = getCustomPayload<{ email: string }>(payload)
 
@@ -38,9 +35,9 @@ export const post: RequestHandler = async req => {
 			text: 'update accounts_base set has_verified_email = true where email = $1',
 			values: [email],
 		})
-
-		return {}
+	} else {
+		return errorResponse(404, { name: 'notFound', message: `Email verification action '${action}' does not exist` })
 	}
 
-	return errorResponse(400, { name: 'invalidEmailResetPayload', message: 'No email or reset token provided' })
+	return {}
 }
