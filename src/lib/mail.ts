@@ -31,4 +31,4 @@ const transporter = createTransport(options)
 
 await transporter.verify()
 
-export default transporter
+export const sendMail = transporter.sendMail.bind(transporter)
