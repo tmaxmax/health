@@ -28,25 +28,29 @@ db-clean:
 	docker rm --force $(DB_CONTAINER_NAME)
 	docker volume rm $(db_volume)
 
-migrations_dir=./db/migrations
+migrations_dir=$(shell pwd)/db/migrations
+migrations_container_dir=/migrations
+
+migrate_cmd=docker run -i --mount type=bind,source=$(migrations_dir),destination=$(migrations_container_dir) --network host migrate/migrate
+migrate_exec_cmd=$(migrate_cmd) -path=$(migrations_container_dir) -database $(DB_CONNECTION_STRING)
 
 migrate-create:
-	migrate create -dir $(migrations_dir) -seq -ext sql $(NAME)
+	$(migrate_cmd) create -dir $(migrations_container_dir) -seq -ext sql $(NAME)
 
 migrate-up:
-	migrate -path $(migrations_dir) -database $(DB_CONNECTION_STRING) up $(N)
+	$(migrate_exec_cmd) up $(N)
 
 migrate-down:
-	migrate -path $(migrations_dir) -database $(DB_CONNECTION_STRING) down $(N)
+	$(migrate_exec_cmd) down $(N)
 
 migrate-drop:
-	migrate -path $(migrations_dir) -database $(DB_CONNECTION_STRING) drop
+	$(migrate_exec_cmd) drop
 
 migrate-goto:
-	migrate -path $(migrations_dir) -database $(DB_CONNECTION_STRING) goto $(V)
+	$(migrate_exec_cmd) goto $(V)
 
 migrate-version:
-	migrate -path $(migrations_dir) -database $(DB_CONNECTION_STRING) version
+	$(migrate_exec_cmd) version
 
 jwk:
 	node generate-jwk.js
